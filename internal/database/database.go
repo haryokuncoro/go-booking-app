@@ -2,7 +2,6 @@ package database
 
 import (
 	"booking-app/config"
-	"booking-app/internal/entity"
 	"fmt"
 	"log"
 
@@ -34,15 +33,6 @@ func ConnectDB(
 	}
 
 	logger.Log.Info("database connected")
-
-	err = db.AutoMigrate(
-		&entity.User{},
-		&entity.Booking{},
-	)
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	return db
 }

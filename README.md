@@ -11,10 +11,11 @@ A production-style Booking API built with Golang using Clean Architecture princi
 * Redis
 * JWT Authentication
 * Zap Logger
-* Worker Pool
 * Goroutines
+* Worker Pool
 * Context
 * Mutex
+* golang-migrate
 * Docker Compose
 
 ---
@@ -23,8 +24,8 @@ A production-style Booking API built with Golang using Clean Architecture princi
 
 ### Authentication
 
-* Register User
-* Login User
+* User Registration
+* User Login
 * JWT Authentication
 * Protected Routes
 
@@ -32,7 +33,7 @@ A production-style Booking API built with Golang using Clean Architecture princi
 
 * Create Booking
 * Get Booking Detail
-* Get User Bookings
+* List User Bookings
 * Room Availability Validation
 * Double Booking Prevention
 
@@ -45,8 +46,8 @@ A production-style Booking API built with Golang using Clean Architecture princi
 
 ### Observability
 
-* Structured Logging with Zap
-* Request Logging
+* Structured Logging (Zap)
+* HTTP Request Logging
 
 ### Concurrency
 
@@ -56,11 +57,12 @@ A production-style Booking API built with Golang using Clean Architecture princi
 * WaitGroup
 * Mutex
 
-### Reliability
+### Database
 
-* Context Propagation
-* Request Timeout
-* Graceful Error Handling
+* PostgreSQL
+* GORM
+* Versioned SQL Migrations
+* Rollback Support
 
 ---
 
@@ -72,7 +74,13 @@ Install:
 * Go 1.26+
 * Docker
 * Docker Compose
-* PostgreSQL Client (optional)
+* golang-migrate
+
+MacOS:
+
+```bash
+brew install golang-migrate
+```
 
 Verify:
 
@@ -80,24 +88,7 @@ Verify:
 go version
 docker --version
 docker compose version
-```
-
----
-
-# Installation
-
-Clone project:
-
-```bash
-git clone https://github.com/yourname/booking-app.git
-
-cd booking-app
-```
-
-Install dependencies:
-
-```bash
-go mod tidy
+migrate -version
 ```
 
 ---
@@ -147,7 +138,72 @@ booking-redis
 
 ---
 
-# Run Application
+# Database Migration
+
+This project uses **golang-migrate**.
+
+Schema changes are managed through versioned SQL files.
+
+## Run Migrations
+
+```bash
+migrate \
+-path migrations \
+-database "postgres://admin:admin@localhost:5432/bookingdb?sslmode=disable" \
+up
+```
+
+## Rollback Last Migration
+
+```bash
+migrate \
+-path migrations \
+-database "postgres://admin:admin@localhost:5432/bookingdb?sslmode=disable" \
+down 1
+```
+
+## Create New Migration
+
+```bash
+migrate create \
+-ext sql \
+-dir migrations \
+create_refresh_tokens_table
+```
+
+---
+
+# Makefile Commands
+
+Run migrations:
+
+```bash
+make migrate-up
+```
+
+Rollback:
+
+```bash
+make migrate-down
+```
+
+---
+
+# Application Startup
+
+1. Start PostgreSQL & Redis
+
+```bash
+docker compose up -d
+```
+
+2. Run migrations
+
+```bash
+make migrate-up
+```
+
+3. Start application
 
 ```bash
 go run cmd/server/main.go
@@ -163,186 +219,59 @@ application started
 
 ---
 
+# Database Schema
+
+## Users
+
+| Column     | Type                |
+| ---------- | ------------------- |
+| id         | BIGSERIAL           |
+| name       | VARCHAR(100)        |
+| email      | VARCHAR(255) UNIQUE |
+| password   | VARCHAR(255)        |
+| created_at | TIMESTAMP           |
+| updated_at | TIMESTAMP           |
+
+## Bookings
+
+| Column       | Type        |
+| ------------ | ----------- |
+| id           | BIGSERIAL   |
+| user_id      | BIGINT      |
+| room_id      | BIGINT      |
+| booking_date | DATE        |
+| status       | VARCHAR(50) |
+| created_at   | TIMESTAMP   |
+| updated_at   | TIMESTAMP   |
+
+Constraint:
+
+```sql
+UNIQUE(room_id, booking_date)
+```
+
+This prevents double booking.
+
+---
+
 # API Endpoints
 
-## Health Check
+## Public
 
-### Request
+| Method | Endpoint              |
+| ------ | --------------------- |
+| POST   | /api/v1/auth/register |
+| POST   | /api/v1/auth/login    |
+| GET    | /health               |
 
-```http
-GET /health
-```
+## Protected
 
-### Response
-
-```json
-{
-  "status": "UP"
-}
-```
-
----
-
-# Register
-
-### Request
-
-```http
-POST /api/v1/auth/register
-```
-
-```json
-{
-  "name": "Haryo",
-  "email": "haryo@test.com",
-  "password": "123456"
-}
-```
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "user registered"
-}
-```
-
----
-
-# Login
-
-### Request
-
-```http
-POST /api/v1/auth/login
-```
-
-```json
-{
-  "email": "haryo@test.com",
-  "password": "123456"
-}
-```
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "login success",
-  "data": {
-    "access_token": "jwt-token"
-  }
-}
-```
-
----
-
-# Current User
-
-### Request
-
-```http
-GET /api/v1/me
-```
-
-Headers:
-
-```text
-Authorization: Bearer <token>
-```
-
-### Response
-
-```json
-{
-  "id": 1,
-  "name": "Haryo",
-  "email": "haryo@test.com"
-}
-```
-
----
-
-# Create Booking
-
-### Request
-
-```http
-POST /api/v1/bookings
-```
-
-Headers:
-
-```text
-Authorization: Bearer <token>
-```
-
-Body:
-
-```json
-{
-  "room_id": 1,
-  "date": "2026-06-20"
-}
-```
-
-### Response
-
-```json
-{
-  "success": true,
-  "message": "booking created"
-}
-```
-
----
-
-# List My Bookings
-
-### Request
-
-```http
-GET /api/v1/bookings
-```
-
-Headers:
-
-```text
-Authorization: Bearer <token>
-```
-
-### Response
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "room_id": 1,
-      "status": "CONFIRMED"
-    }
-  ]
-}
-```
-
----
-
-# Booking Detail
-
-### Request
-
-```http
-GET /api/v1/bookings/{id}
-```
-
-Headers:
-
-```text
-Authorization: Bearer <token>
-```
+| Method | Endpoint              |
+| ------ | --------------------- |
+| GET    | /api/v1/me            |
+| POST   | /api/v1/bookings      |
+| GET    | /api/v1/bookings      |
+| GET    | /api/v1/bookings/{id} |
 
 ---
 
@@ -352,42 +281,21 @@ Authorization: Bearer <token>
 
 Used for background processing.
 
-```go
-go StartEmailWorker(...)
-```
-
 ## Channel
 
-Used as queue.
-
-```go
-EmailQueue <- job
-```
+Used as asynchronous job queue.
 
 ## Worker Pool
 
-```go
-for i := 0; i < 5; i++ {
-    go StartEmailWorker(i, EmailQueue)
-}
-```
+5 email workers process jobs concurrently.
 
 ## WaitGroup
 
-```go
-wg.Add(1)
-go process()
-wg.Wait()
-```
+Used for synchronization.
 
 ## Mutex
 
-Used to prevent concurrent booking conflicts.
-
-```go
-roomLock.Lock()
-defer roomLock.Unlock()
-```
+Used to prevent race conditions during booking creation.
 
 ---
 
@@ -395,20 +303,23 @@ defer roomLock.Unlock()
 
 Cache Aside Pattern.
 
-```text
-Request
-   │
-   ▼
+Booking Detail Request
+
+↓
+
 Redis
- │      │
-Hit     Miss
- │      │
- ▼      ▼
-Return  Database
-          │
-          ▼
-      Cache Result
-```
+
+├── Hit → Return
+
+└── Miss
+
+↓
+
+PostgreSQL
+
+↓
+
+Cache Result
 
 TTL:
 
@@ -423,7 +334,7 @@ TTL:
 * Password Hashing (bcrypt)
 * JWT Authentication
 * Protected Routes
-* Validation
+* Request Validation
 * Request Timeout
 
 ---
