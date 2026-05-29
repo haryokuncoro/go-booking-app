@@ -4,8 +4,8 @@ import (
 	"booking-app/config"
 	"booking-app/internal/database"
 	"booking-app/internal/handler"
-	"booking-app/internal/service"
 	"booking-app/internal/repository"
+	"booking-app/internal/service"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -29,7 +29,7 @@ func main() {
 		)
 	authService :=
 		service.NewAuthService(
-			userRepo,
+			userRepo, cfg,
 		)
 	authHandler :=
 		handler.NewAuthHandler(
@@ -53,6 +53,11 @@ func main() {
 	auth.POST(
 		"/register",
 		authHandler.Register,
+	)
+
+	auth.POST(
+		"/login",
+		authHandler.Login,
 	)
 
 	fmt.Printf(
