@@ -2,7 +2,9 @@ package handler
 
 import (
 	"booking-app/internal/dto"
+	"booking-app/internal/response"
 	"booking-app/internal/service"
+	customValidator "booking-app/internal/validator"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -41,12 +43,30 @@ func (h *BookingHandler) CreateBooking(
 		return
 	}
 
+	err :=
+		customValidator.Validate.
+			Struct(req)
+
+	if err != nil {
+
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			customValidator.
+				FormatValidationError(
+					err,
+				),
+		)
+
+		return
+	}
+
 	userID :=
 		c.MustGet(
 			"userID",
 		).(uint)
 
-	err :=
+	err =
 		h.bookingService.
 			CreateBooking(
 				userID,
@@ -65,12 +85,13 @@ func (h *BookingHandler) CreateBooking(
 		return
 	}
 
-	c.JSON(
-		http.StatusCreated,
-		gin.H{
-			"message": "booking created",
-		},
-	)
+	
+	response.Success(
+	c,
+	http.StatusCreated,
+	"booking created",
+	nil,
+)
 }
 
 func (h *BookingHandler) ListBookings(
@@ -140,4 +161,3 @@ func (h *BookingHandler) GetBooking(
 		booking,
 	)
 }
-

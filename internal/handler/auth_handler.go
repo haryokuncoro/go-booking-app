@@ -5,6 +5,8 @@ import (
 	"booking-app/internal/service"
 	"net/http"
 
+	"booking-app/internal/response"
+	customValidator "booking-app/internal/validator"
 	"github.com/gin-gonic/gin"
 )
 
@@ -40,7 +42,25 @@ func (h *AuthHandler) Register(
 		return
 	}
 
-	err := h.authService.Register(
+	err :=
+		customValidator.Validate.
+			Struct(req)
+
+	if err != nil {
+
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			customValidator.
+				FormatValidationError(
+					err,
+				),
+		)
+
+		return
+	}
+
+	err = h.authService.Register(
 		req,
 	)
 
@@ -56,11 +76,11 @@ func (h *AuthHandler) Register(
 		return
 	}
 
-	c.JSON(
+	response.Success(
+		c,
 		http.StatusCreated,
-		gin.H{
-			"message": "user registered",
-		},
+		"user registered",
+		nil,
 	)
 }
 
@@ -84,6 +104,23 @@ func (h *AuthHandler) Login(
 		return
 	}
 
+	err :=
+		customValidator.Validate.
+			Struct(req)
+	if err != nil {
+
+		response.Error(
+			c,
+			http.StatusBadRequest,
+			customValidator.
+				FormatValidationError(
+					err,
+				),
+		)
+
+		return
+	}
+
 	token, err :=
 		h.authService.Login(req)
 
@@ -99,8 +136,10 @@ func (h *AuthHandler) Login(
 		return
 	}
 
-	c.JSON(
+	response.Success(
+		c,
 		http.StatusOK,
+		"login success",
 		gin.H{
 			"access_token": token,
 		},
