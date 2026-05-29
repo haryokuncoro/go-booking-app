@@ -1,22 +1,17 @@
 package main
 
 import (
+	_ "booking-app/docs"
 	"booking-app/config"
 	"booking-app/internal/cache"
 	"booking-app/internal/database"
 	"booking-app/internal/handler"
 	"booking-app/internal/logger"
-	"booking-app/internal/middleware"
 	"booking-app/internal/repository"
+	"booking-app/internal/router"
 	"booking-app/internal/service"
 	"booking-app/internal/worker"
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"time"
-	_ "booking-app/docs"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
-
 )
 
 // @title Booking API
@@ -28,161 +23,34 @@ import (
 // @name Authorization
 func main() {
 	logger.Init()
-
 	defer logger.Sync()
 
 	cfg := config.LoadConfig()
-
 	db := database.ConnectDB(cfg)
-
-	_ = db
-
-	r := gin.New()
-
-	r.GET(
-	"/swagger/*any",
-	ginSwagger.WrapHandler(
-		swaggerFiles.Handler,
-	),
-)
-
-	r.Use(
-		middleware.RequestLogger(),
-	)
-
-	r.Use(
-		middleware.TimeoutMiddleware(
-			5 * time.Second,
-		),
-	)
-
-	r.Use(
-		gin.Recovery(),
-	)
-
+	redisClient := cache.NewRedis(cfg)
 	worker.StartWorkers()
 
-	redisClient :=
-		cache.NewRedis(
-			cfg,
-		)
+	userRepo    := repository.NewUserRepository(db)
+	bookingRepo := repository.NewBookingRepository(db)
 
-	healthHandler := handler.NewHealthHandler()
-	userRepo :=
-		repository.NewUserRepository(
-			db,
-		)
-	bookingRepo :=
-		repository.NewBookingRepository(
-			db,
-		)
-	authService :=
-		service.NewAuthService(
-			userRepo, cfg,
-		)
-	authHandler :=
-		handler.NewAuthHandler(
-			authService,
-		)
-	userHandler := handler.NewUserHandler(userRepo)
-	bookingService :=
-		service.NewBookingService(
-			bookingRepo, userRepo, redisClient,
-		)
-	bookingHandler :=
-		handler.NewBookingHandler(
-			bookingService,
-		)
+	authService    := service.NewAuthService(userRepo, cfg)
+	bookingService := service.NewBookingService(bookingRepo, userRepo, redisClient)
 
-	r.GET(
-		"/health",
-		healthHandler.Health,
+	r := router.Setup(
+		cfg,
+		handler.NewHealthHandler(),
+		handler.NewAuthHandler(authService),
+		handler.NewUserHandler(userRepo),
+		handler.NewBookingHandler(bookingService),
 	)
 
-	r.POST(
-		"/seed-user",
-		userHandler.SeedUser,
+	logger.Log.Info("application started",
+		zap.String("app", cfg.AppName),
+		zap.String("env", cfg.AppEnv),
+		zap.String("port", cfg.AppPort),
 	)
 
-	
-
-	api := r.Group("/api/v1")
-
-	api.GET(
-		"/slow",
-		userHandler.Slow,
-	)
-
-	auth := api.Group("/auth")
-
-	auth.POST(
-		"/register",
-		authHandler.Register,
-	)
-
-	auth.POST(
-		"/login",
-		authHandler.Login,
-	)
-
-	protected := api.Group("")
-
-	protected.Use(
-		middleware.JWTMiddleware(
-			cfg.JWTSecret,
-		),
-	)
-
-	protected.GET(
-		"/me",
-		userHandler.Me,
-	)
-
-	
-
-	booking := protected.Group(
-		"/bookings",
-	)
-
-	booking.POST(
-		"",
-		bookingHandler.CreateBooking,
-	)
-
-	booking.GET(
-		"",
-		bookingHandler.ListBookings,
-	)
-
-	booking.GET(
-		"/:id",
-		bookingHandler.GetBooking,
-	)
-
-	logger.Log.Info(
-		"application started",
-
-		zap.String(
-			"app",
-			cfg.AppName,
-		),
-
-		zap.String(
-			"env",
-			cfg.AppEnv,
-		),
-
-		zap.String(
-			"port",
-			cfg.AppPort,
-		),
-	)
-
-	err := r.Run(
-		":" + cfg.AppPort,
-	)
-
-	if err != nil {
+	if err := r.Run(":" + cfg.AppPort); err != nil {
 		panic(err)
 	}
 }
