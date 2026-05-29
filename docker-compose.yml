@@ -1,0 +1,9 @@
+comservices:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: bookingdb
+    ports:
+      - "5432:5432"
