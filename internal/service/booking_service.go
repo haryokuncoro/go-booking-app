@@ -4,6 +4,7 @@ import (
 	"booking-app/internal/cache"
 	"booking-app/internal/dto"
 	"booking-app/internal/entity"
+	"booking-app/internal/lock"
 	"booking-app/internal/logger"
 	"booking-app/internal/repository"
 	"booking-app/internal/worker"
@@ -12,10 +13,14 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"time"
+	"errors"
 )
+
+var ErrRoomAlreadyBooked = errors.New("room already booked for the requested date")
 
 type BookingService interface {
 	CreateBooking(
+		ctx context.Context,
 		userID uint,
 		req dto.CreateBookingRequest,
 	) error
@@ -51,6 +56,7 @@ func NewBookingService(
 }
 
 func (s *bookingService) CreateBooking(
+	ctx context.Context,
 	userID uint,
 	req dto.CreateBookingRequest,
 ) error {
@@ -70,17 +76,42 @@ func (s *bookingService) CreateBooking(
 		return err
 	}
 
+	roomLock :=
+		lock.GetRoomLock(
+			req.RoomID,
+		)
+
+	roomLock.Lock()
+
+	defer roomLock.Unlock()
+
+	existing, _ :=
+		s.bookingRepo.
+			FindByRoomAndDate(
+				ctx,
+				req.RoomID,
+				date,
+			)
+
+	if existing != nil {
+		logger.Log.Error(
+			"room already booked",
+			zap.Uint("room_id", req.RoomID),
+			zap.String("date", req.Date),
+		)
+		return ErrRoomAlreadyBooked
+	}
+
 	booking := entity.Booking{
 		UserID:      userID,
-		RoomName:    req.RoomName,
+		RoomID:      req.RoomID,
 		BookingDate: date,
 		Status:      "CONFIRMED",
 	}
-	ctx := context.Background()
+
 	if err = s.bookingRepo.Create(ctx, &booking); err != nil {
 		logger.Log.Error(
 			"create booking failed",
-
 			zap.Error(err),
 		)
 		return err
@@ -98,20 +129,13 @@ func (s *bookingService) CreateBooking(
 
 		worker.EmailQueue <- worker.EmailJob{
 			UserEmail: user.Email,
-			RoomName:  booking.RoomName,
+			RoomId:    booking.RoomID,
 		}
 	}
 	logger.Log.Info(
 		"booking created",
-
-		zap.Uint(
-			"user_id",
-			userID,
-		),
-
-		zap.String(
-			"room_name",
-			booking.RoomName,
+		zap.Uint("user_id", userID,),
+		zap.Uint("room_id", booking.RoomID,
 		),
 	)
 	return nil
@@ -132,29 +156,25 @@ func (s *bookingService) GetBooking(
 	if err == nil {
 
 		var booking entity.Booking
-
-		json.Unmarshal(
-			[]byte(cached),
-			&booking,
-		)
-
-		logger.Log.Info(
-			"booking cache hit",
-
-			zap.Uint(
-				"booking_id",
-				id,
-			),
-		)
-
-		return &booking, nil
+		if unmarshalErr := json.Unmarshal([]byte(cached), &booking); unmarshalErr != nil {
+			logger.Log.Error(
+				"booking cache unmarshal failed",
+				zap.Uint("booking_id", id),
+				zap.Error(unmarshalErr),
+			)
+		} else {
+			logger.Log.Info(
+				"booking cache hit",
+				zap.Uint("booking_id", id),
+			)
+			return &booking, nil
+		}
 	}
 
 	booking, err := s.bookingRepo.FindByID(ctx, id)
 	if err != nil {
 		logger.Log.Error(
 			"Get booking failed",
-
 			zap.Error(err),
 		)
 		return nil, err
@@ -162,11 +182,7 @@ func (s *bookingService) GetBooking(
 
 	logger.Log.Info(
 		"booking cache miss",
-
-		zap.Uint(
-			"booking_id",
-			id,
-		),
+		zap.Uint("booking_id",id),
 	)
 
 	data, err := json.Marshal(booking)

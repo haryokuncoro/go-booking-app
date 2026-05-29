@@ -39,9 +39,9 @@ func StartEmailWorker(
 				id,
 			),
 
-			zap.String(
-				"room_name",
-				job.RoomName,
+			zap.Uint(
+				"room_id",
+				job.RoomId,
 			),
 		)
 	}

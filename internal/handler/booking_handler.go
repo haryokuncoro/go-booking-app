@@ -28,7 +28,7 @@ func (h *BookingHandler) CreateBooking(
 ) {
 
 	var req dto.CreateBookingRequest
-
+	ctx := c.Request.Context()
 	if err := c.ShouldBindJSON(
 		&req,
 	); err != nil {
@@ -69,6 +69,7 @@ func (h *BookingHandler) CreateBooking(
 	err =
 		h.bookingService.
 			CreateBooking(
+				ctx,
 				userID,
 				req,
 			)
@@ -85,13 +86,12 @@ func (h *BookingHandler) CreateBooking(
 		return
 	}
 
-	
 	response.Success(
-	c,
-	http.StatusCreated,
-	"booking created",
-	nil,
-)
+		c,
+		http.StatusCreated,
+		"booking created",
+		nil,
+	)
 }
 
 func (h *BookingHandler) ListBookings(

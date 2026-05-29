@@ -7,12 +7,9 @@ type Booking struct {
 
 	UserID uint
 
-	RoomName string
+	RoomID uint `gorm:"uniqueIndex:idx_room_date"`
 
-	BookingDate time.Time
+	BookingDate time.Time `gorm:"uniqueIndex:idx_room_date"`
 
 	Status string
-
-	CreatedAt time.Time
-	UpdatedAt time.Time
 }
