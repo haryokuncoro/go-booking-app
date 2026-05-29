@@ -4,6 +4,7 @@ import (
 	"booking-app/config"
 	"booking-app/internal/database"
 	"booking-app/internal/handler"
+	"booking-app/internal/middleware"
 	"booking-app/internal/repository"
 	"booking-app/internal/service"
 	"fmt"
@@ -22,7 +23,6 @@ func main() {
 	r := gin.Default()
 
 	healthHandler := handler.NewHealthHandler()
-	userHandler := handler.NewUserHandler(db)
 	userRepo :=
 		repository.NewUserRepository(
 			db,
@@ -35,6 +35,7 @@ func main() {
 		handler.NewAuthHandler(
 			authService,
 		)
+	userHandler := handler.NewUserHandler(userRepo)
 
 	r.GET(
 		"/health",
@@ -58,6 +59,19 @@ func main() {
 	auth.POST(
 		"/login",
 		authHandler.Login,
+	)
+
+	protected := api.Group("")
+
+	protected.Use(
+		middleware.JWTMiddleware(
+			cfg.JWTSecret,
+		),
+	)
+
+	protected.GET(
+		"/me",
+		userHandler.Me,
 	)
 
 	fmt.Printf(
