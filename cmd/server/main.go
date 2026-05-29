@@ -8,6 +8,7 @@ import (
 	"booking-app/internal/repository"
 	"booking-app/internal/service"
 	"booking-app/internal/worker"
+	"booking-app/internal/cache"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -24,6 +25,11 @@ func main() {
 	r := gin.Default()
 
 	worker.StartWorkers()
+
+	redisClient :=
+	cache.NewRedis(
+		cfg,
+	)
 
 	healthHandler := handler.NewHealthHandler()
 	userRepo :=
@@ -45,7 +51,7 @@ func main() {
 	userHandler := handler.NewUserHandler(userRepo)
 	bookingService :=
 		service.NewBookingService(
-			bookingRepo, userRepo,
+			bookingRepo, userRepo, redisClient,
 		)
 	bookingHandler :=
 		handler.NewBookingHandler(

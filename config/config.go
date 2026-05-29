@@ -16,6 +16,9 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
+
+	RedisHost string
+	RedisPort string
 	
 	JWTSecret     string
 	JWTExpireHour int
@@ -41,6 +44,9 @@ func LoadConfig() *Config {
 		DBUser:     viper.GetString("DB_USER"),
 		DBPassword: viper.GetString("DB_PASSWORD"),
 		DBName:     viper.GetString("DB_NAME"),
+
+		RedisHost: viper.GetString("REDIS_HOST"),
+		RedisPort: viper.GetString("REDIS_PORT"),
 		
 		JWTSecret: viper.GetString("JWT_SECRET"),
 		JWTExpireHour: viper.GetInt("JWT_EXPIRE_HOUR"),

@@ -1,15 +1,19 @@
 package service
 
 import (
+	"booking-app/internal/cache"
 	"booking-app/internal/dto"
 	"booking-app/internal/entity"
 	"booking-app/internal/repository"
 	"booking-app/internal/worker"
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/redis/go-redis/v9"
 	"time"
 )
 
 type BookingService interface {
-
 	CreateBooking(
 		userID uint,
 		req dto.CreateBookingRequest,
@@ -27,17 +31,19 @@ type BookingService interface {
 type bookingService struct {
 	bookingRepo repository.BookingRepository
 	userRepo    repository.UserRepository
-
+	redis       *redis.Client
 }
 
 func NewBookingService(
 	bookingRepo repository.BookingRepository,
 	userRepo repository.UserRepository,
+	redis *redis.Client,
 ) BookingService {
 
 	return &bookingService{
 		bookingRepo: bookingRepo,
 		userRepo:    userRepo,
+		redis:       redis,
 	}
 }
 
@@ -67,10 +73,13 @@ func (s *bookingService) CreateBooking(
 		return err
 	}
 
+	ctx := context.Background()
+	s.redis.Del(ctx, cache.BookingKey(booking.ID))
+
 	user, err :=
-	s.userRepo.FindByID(
-		userID,
-	)
+		s.userRepo.FindByID(
+			userID,
+		)
 
 	if err == nil {
 
@@ -85,10 +94,42 @@ func (s *bookingService) CreateBooking(
 func (s *bookingService) GetBooking(
 	id uint,
 ) (*entity.Booking, error) {
+	ctx := context.Background()
+	key := cache.BookingKey(id)
 
-	return s.bookingRepo.FindByID(
-		id,
-	)
+	cached, err :=
+		s.redis.Get(
+			ctx,
+			key,
+		).Result()
+
+	if err == nil {
+
+		var booking entity.Booking
+
+		json.Unmarshal(
+			[]byte(cached),
+			&booking,
+		)
+
+		fmt.Println(
+			"Cache Hit",
+		)
+
+		return &booking, nil
+	}
+
+	booking, err := s.bookingRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := json.Marshal(booking)
+	if err == nil {
+		s.redis.Set(ctx, key, string(data), 5*time.Minute)
+	}
+
+	return booking, nil
 }
 
 func (s *bookingService) GetUserBookings(
@@ -100,4 +141,3 @@ func (s *bookingService) GetUserBookings(
 			userID,
 		)
 }
-
