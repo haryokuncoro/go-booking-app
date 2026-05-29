@@ -97,7 +97,7 @@ func (h *BookingHandler) CreateBooking(
 func (h *BookingHandler) ListBookings(
 	c *gin.Context,
 ) {
-
+	ctx := c.Request.Context()
 	userID :=
 		c.MustGet(
 			"userID",
@@ -106,6 +106,7 @@ func (h *BookingHandler) ListBookings(
 	bookings, err :=
 		h.bookingService.
 			GetUserBookings(
+				ctx,
 				userID,
 			)
 
@@ -137,10 +138,11 @@ func (h *BookingHandler) GetBooking(
 			10,
 			64,
 		)
-
+	ctx := c.Request.Context()
 	booking, err :=
 		h.bookingService.
 			GetBooking(
+				ctx,
 				uint(id64),
 			)
 

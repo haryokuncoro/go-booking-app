@@ -8,15 +8,17 @@ import (
 	"booking-app/internal/entity"
 	"booking-app/internal/repository"
 	"booking-app/internal/utils"
-
+	"context"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService interface {
 	Register(
+		ctx context.Context,
 		req dto.RegisterRequest,
 	) error
 	Login(
+		ctx context.Context,
 		req dto.LoginRequest,
 	) (string, error)
 }
@@ -38,11 +40,13 @@ func NewAuthService(
 }
 
 func (s *authService) Register(
+	ctx context.Context,
 	req dto.RegisterRequest,
 ) error {
 
 	existingUser, _ :=
 		s.userRepo.FindByEmail(
+			ctx,
 			req.Email,
 		)
 
@@ -71,16 +75,19 @@ func (s *authService) Register(
 	}
 
 	return s.userRepo.Create(
+		ctx,
 		&user,
 	)
 }
 
 func (s *authService) Login(
+	ctx context.Context,
 	req dto.LoginRequest,
 ) (string, error) {
 
 	user, err :=
 		s.userRepo.FindByEmail(
+			ctx,
 			req.Email,
 		)
 

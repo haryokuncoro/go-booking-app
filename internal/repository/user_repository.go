@@ -2,14 +2,14 @@ package repository
 
 import (
 	"booking-app/internal/entity"
-
+	"context"
 	"gorm.io/gorm"
 )
 
 type UserRepository interface {
-	Create(user *entity.User) error
-	FindByEmail(email string) (*entity.User, error)
-	FindByID(id uint)(*entity.User, error)
+	Create(ctx context.Context, user *entity.User) error
+	FindByEmail(ctx context.Context, email string) (*entity.User, error)
+	FindByID(ctx context.Context, id uint)(*entity.User, error)
 }
 
 type userRepository struct {
@@ -26,19 +26,24 @@ func NewUserRepository(
 }
 
 func (r *userRepository) Create(
+	ctx context.Context,
 	user *entity.User,
 ) error {
 
-	return r.db.Create(user).Error
+	return r.db.
+	WithContext(ctx).
+	Create(user).Error
 }
 
 func (r *userRepository) FindByEmail(
+	ctx context.Context,
 	email string,
 ) (*entity.User, error) {
 
 	var user entity.User
 
 	err := r.db.
+		WithContext(ctx).
 		Where("email = ?", email).
 		First(&user).
 		Error
@@ -51,12 +56,14 @@ func (r *userRepository) FindByEmail(
 }
 
 func (r *userRepository) FindByID(
+	ctx context.Context,
 	id uint,
 ) (*entity.User, error) {
 
 	var user entity.User
 
 	err := r.db.
+		WithContext(ctx).
 		First(&user, id).
 		Error
 

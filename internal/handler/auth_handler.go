@@ -4,7 +4,6 @@ import (
 	"booking-app/internal/dto"
 	"booking-app/internal/service"
 	"net/http"
-
 	"booking-app/internal/response"
 	customValidator "booking-app/internal/validator"
 	"github.com/gin-gonic/gin"
@@ -28,7 +27,7 @@ func (h *AuthHandler) Register(
 ) {
 
 	var req dto.RegisterRequest
-
+	ctx := c.Request.Context()
 	if err := c.ShouldBindJSON(
 		&req,
 	); err != nil {
@@ -61,6 +60,7 @@ func (h *AuthHandler) Register(
 	}
 
 	err = h.authService.Register(
+		ctx,
 		req,
 	)
 
@@ -89,7 +89,7 @@ func (h *AuthHandler) Login(
 ) {
 
 	var req dto.LoginRequest
-
+	ctx := c.Request.Context()
 	if err := c.ShouldBindJSON(
 		&req,
 	); err != nil {
@@ -122,7 +122,7 @@ func (h *AuthHandler) Login(
 	}
 
 	token, err :=
-		h.authService.Login(req)
+		h.authService.Login(ctx, req)
 
 	if err != nil {
 

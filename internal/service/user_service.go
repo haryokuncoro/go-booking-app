@@ -5,10 +5,12 @@ import (
 	"booking-app/config"
 	"booking-app/internal/entity"
 	"booking-app/internal/repository"
+	"context"
 )
 
 type UserService interface{
 	FindByID(
+	ctx context.Context,
 	id uint,
 ) (*entity.User, error)
 }
@@ -28,10 +30,12 @@ func NewUserService(
 }
 
 func(s *userService) FindByID(
+	ctx context.Context,
 	id uint,
 ) (*entity.User, error){
 	existingUser, err :=
 		s.userRepo.FindByID(
+			ctx,
 			id,
 		)
 	if err != nil{

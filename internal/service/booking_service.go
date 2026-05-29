@@ -21,10 +21,12 @@ type BookingService interface {
 	) error
 
 	GetBooking(
+		ctx context.Context,
 		id uint,
 	) (*entity.Booking, error)
 
 	GetUserBookings(
+		ctx context.Context,
 		userID uint,
 	) ([]entity.Booking, error)
 }
@@ -74,8 +76,8 @@ func (s *bookingService) CreateBooking(
 		BookingDate: date,
 		Status:      "CONFIRMED",
 	}
-
-	if err = s.bookingRepo.Create(&booking); err != nil {
+	ctx := context.Background()
+	if err = s.bookingRepo.Create(ctx, &booking); err != nil {
 		logger.Log.Error(
 			"create booking failed",
 
@@ -84,11 +86,11 @@ func (s *bookingService) CreateBooking(
 		return err
 	}
 
-	ctx := context.Background()
 	s.redis.Del(ctx, cache.BookingKey(booking.ID))
 
 	user, err :=
 		s.userRepo.FindByID(
+			ctx,
 			userID,
 		)
 
@@ -116,9 +118,9 @@ func (s *bookingService) CreateBooking(
 }
 
 func (s *bookingService) GetBooking(
+	ctx context.Context,
 	id uint,
 ) (*entity.Booking, error) {
-	ctx := context.Background()
 	key := cache.BookingKey(id)
 
 	cached, err :=
@@ -148,7 +150,7 @@ func (s *bookingService) GetBooking(
 		return &booking, nil
 	}
 
-	booking, err := s.bookingRepo.FindByID(id)
+	booking, err := s.bookingRepo.FindByID(ctx, id)
 	if err != nil {
 		logger.Log.Error(
 			"Get booking failed",
@@ -176,11 +178,13 @@ func (s *bookingService) GetBooking(
 }
 
 func (s *bookingService) GetUserBookings(
+	ctx context.Context,
 	userID uint,
 ) ([]entity.Booking, error) {
 
 	return s.bookingRepo.
 		FindByUserID(
+			ctx,
 			userID,
 		)
 }

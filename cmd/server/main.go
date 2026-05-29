@@ -12,6 +12,7 @@ import (
 	"booking-app/internal/worker"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"time"
 )
 
 func main() {
@@ -29,6 +30,12 @@ func main() {
 
 	r.Use(
 		middleware.RequestLogger(),
+	)
+
+	r.Use(
+		middleware.TimeoutMiddleware(
+			5 * time.Second,
+		),
 	)
 
 	r.Use(
@@ -79,7 +86,14 @@ func main() {
 		userHandler.SeedUser,
 	)
 
+	
+
 	api := r.Group("/api/v1")
+
+	api.GET(
+		"/slow",
+		userHandler.Slow,
+	)
 
 	auth := api.Group("/auth")
 
@@ -105,6 +119,8 @@ func main() {
 		"/me",
 		userHandler.Me,
 	)
+
+	
 
 	booking := protected.Group(
 		"/bookings",

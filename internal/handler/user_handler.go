@@ -4,8 +4,8 @@ import (
 	"booking-app/internal/entity"
 	"booking-app/internal/repository"
 	"net/http"
-
 	"github.com/gin-gonic/gin"
+	"time"
 )
 
 type UserHandler struct {
@@ -23,14 +23,14 @@ func NewUserHandler(
 func (h *UserHandler) SeedUser(
 	c *gin.Context,
 ) {
-
+	ctx := c.Request.Context()
 	user := entity.User{
 		Name:     "Haryo",
 		Email:    "haryo@test.com",
 		Password: "123456",
 	}
 
-	h.userRepo.Create(&user)
+	h.userRepo.Create(ctx, &user)
 
 	c.JSON(
 		http.StatusOK,
@@ -43,7 +43,7 @@ func (h *UserHandler) SeedUser(
 func (h *UserHandler) Me(
 	c *gin.Context,
 ) {
-
+	ctx := c.Request.Context()
 	userID :=
 		c.MustGet(
 			"userID",
@@ -51,6 +51,7 @@ func (h *UserHandler) Me(
 
 	user, err :=
 		h.userRepo.FindByID(
+			ctx,
 			userID,
 		)
 
@@ -70,4 +71,20 @@ func (h *UserHandler) Me(
 		http.StatusOK,
 		user,
 	)
+}
+
+func (h *UserHandler) Slow(
+	c *gin.Context,
+) {
+	select {
+	case <-time.After(10 * time.Second):
+		c.JSON(200, gin.H{
+			"message": "done",
+		})
+
+	case <-c.Request.Context().Done():
+		c.JSON(408, gin.H{
+			"message": "timeout",
+		})
+	}
 }
