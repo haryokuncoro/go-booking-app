@@ -22,6 +22,17 @@ func NewAuthHandler(
 	}
 }
 
+// Register godoc
+//
+// @Summary Register user
+// @Description Register a new user
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body dto.RegisterRequest true "Register Request"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(
 	c *gin.Context,
 ) {
@@ -84,6 +95,17 @@ func (h *AuthHandler) Register(
 	)
 }
 
+// Login godoc
+//
+// @Summary Login user
+// @Description Login with email and password
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body dto.LoginRequest true "Login Request"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(
 	c *gin.Context,
 ) {

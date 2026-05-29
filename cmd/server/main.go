@@ -13,8 +13,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"time"
+	_ "booking-app/docs"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+
 )
 
+// @title Booking API
+// @version 1.0
+// @description Production-style Booking API using Gin, PostgreSQL, Redis, JWT, Goroutines and Worker Pools.
+// @BasePath /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	logger.Init()
 
@@ -27,6 +38,13 @@ func main() {
 	_ = db
 
 	r := gin.New()
+
+	r.GET(
+	"/swagger/*any",
+	ginSwagger.WrapHandler(
+		swaggerFiles.Handler,
+	),
+)
 
 	r.Use(
 		middleware.RequestLogger(),

@@ -23,6 +23,18 @@ func NewBookingHandler(
 	}
 }
 
+// CreateBooking godoc
+//
+// @Summary Create booking
+// @Description Create a new booking
+// @Tags Booking
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body dto.CreateBookingRequest true "Booking Request"
+// @Success 201 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /bookings [post]
 func (h *BookingHandler) CreateBooking(
 	c *gin.Context,
 ) {
@@ -94,6 +106,7 @@ func (h *BookingHandler) CreateBooking(
 	)
 }
 
+
 func (h *BookingHandler) ListBookings(
 	c *gin.Context,
 ) {
@@ -128,6 +141,16 @@ func (h *BookingHandler) ListBookings(
 	)
 }
 
+// GetBooking godoc
+//
+// @Summary Get booking
+// @Tags Booking
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Booking ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /bookings/{id} [get]
 func (h *BookingHandler) GetBooking(
 	c *gin.Context,
 ) {
