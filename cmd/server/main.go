@@ -7,6 +7,7 @@ import (
 	"booking-app/internal/middleware"
 	"booking-app/internal/repository"
 	"booking-app/internal/service"
+	"booking-app/internal/worker"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,8 @@ func main() {
 	_ = db
 
 	r := gin.Default()
+
+	worker.StartWorkers()
 
 	healthHandler := handler.NewHealthHandler()
 	userRepo :=
@@ -42,7 +45,7 @@ func main() {
 	userHandler := handler.NewUserHandler(userRepo)
 	bookingService :=
 		service.NewBookingService(
-			bookingRepo,
+			bookingRepo, userRepo,
 		)
 	bookingHandler :=
 		handler.NewBookingHandler(

@@ -1,9 +1,10 @@
 package service
 
 import (
-	"booking-app/internal/repository"
 	"booking-app/internal/dto"
 	"booking-app/internal/entity"
+	"booking-app/internal/repository"
+	"booking-app/internal/worker"
 	"time"
 )
 
@@ -25,14 +26,18 @@ type BookingService interface {
 
 type bookingService struct {
 	bookingRepo repository.BookingRepository
+	userRepo    repository.UserRepository
+
 }
 
 func NewBookingService(
 	bookingRepo repository.BookingRepository,
+	userRepo repository.UserRepository,
 ) BookingService {
 
 	return &bookingService{
 		bookingRepo: bookingRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -58,9 +63,23 @@ func (s *bookingService) CreateBooking(
 		Status:      "CONFIRMED",
 	}
 
-	return s.bookingRepo.Create(
-		&booking,
+	if err = s.bookingRepo.Create(&booking); err != nil {
+		return err
+	}
+
+	user, err :=
+	s.userRepo.FindByID(
+		userID,
 	)
+
+	if err == nil {
+
+		worker.EmailQueue <- worker.EmailJob{
+			UserEmail: user.Email,
+			RoomName:  booking.RoomName,
+		}
+	}
+	return nil
 }
 
 func (s *bookingService) GetBooking(
