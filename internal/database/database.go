@@ -7,6 +7,7 @@ import (
 	"log"
 
 	"gorm.io/driver/postgres"
+	"booking-app/internal/logger"
 	"gorm.io/gorm"
 )
 
@@ -31,7 +32,9 @@ func ConnectDB(
 	if err != nil {
 		log.Fatal(err)
 	}
-	
+
+	logger.Log.Info("database connected")
+
 	err = db.AutoMigrate(
 		&entity.User{},
 		&entity.Booking{},

@@ -2,19 +2,22 @@ package main
 
 import (
 	"booking-app/config"
+	"booking-app/internal/cache"
 	"booking-app/internal/database"
 	"booking-app/internal/handler"
+	"booking-app/internal/logger"
 	"booking-app/internal/middleware"
 	"booking-app/internal/repository"
 	"booking-app/internal/service"
 	"booking-app/internal/worker"
-	"booking-app/internal/cache"
-	"fmt"
-
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 func main() {
+	logger.Init()
+
+	defer logger.Sync()
 
 	cfg := config.LoadConfig()
 
@@ -22,14 +25,22 @@ func main() {
 
 	_ = db
 
-	r := gin.Default()
+	r := gin.New()
+
+	r.Use(
+		middleware.RequestLogger(),
+	)
+
+	r.Use(
+		gin.Recovery(),
+	)
 
 	worker.StartWorkers()
 
 	redisClient :=
-	cache.NewRedis(
-		cfg,
-	)
+		cache.NewRedis(
+			cfg,
+		)
 
 	healthHandler := handler.NewHealthHandler()
 	userRepo :=
@@ -114,10 +125,23 @@ func main() {
 		bookingHandler.GetBooking,
 	)
 
-	fmt.Printf(
-		"Starting %s on port %s\n",
-		cfg.AppName,
-		cfg.AppPort,
+	logger.Log.Info(
+		"application started",
+
+		zap.String(
+			"app",
+			cfg.AppName,
+		),
+
+		zap.String(
+			"env",
+			cfg.AppEnv,
+		),
+
+		zap.String(
+			"port",
+			cfg.AppPort,
+		),
 	)
 
 	err := r.Run(

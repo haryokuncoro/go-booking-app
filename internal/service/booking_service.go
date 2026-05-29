@@ -4,12 +4,13 @@ import (
 	"booking-app/internal/cache"
 	"booking-app/internal/dto"
 	"booking-app/internal/entity"
+	"booking-app/internal/logger"
 	"booking-app/internal/repository"
 	"booking-app/internal/worker"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -59,6 +60,11 @@ func (s *bookingService) CreateBooking(
 		)
 
 	if err != nil {
+		logger.Log.Error(
+			"create booking failed",
+
+			zap.Error(err),
+		)
 		return err
 	}
 
@@ -70,6 +76,11 @@ func (s *bookingService) CreateBooking(
 	}
 
 	if err = s.bookingRepo.Create(&booking); err != nil {
+		logger.Log.Error(
+			"create booking failed",
+
+			zap.Error(err),
+		)
 		return err
 	}
 
@@ -88,6 +99,19 @@ func (s *bookingService) CreateBooking(
 			RoomName:  booking.RoomName,
 		}
 	}
+	logger.Log.Info(
+		"booking created",
+
+		zap.Uint(
+			"user_id",
+			userID,
+		),
+
+		zap.String(
+			"room_name",
+			booking.RoomName,
+		),
+	)
 	return nil
 }
 
@@ -112,8 +136,13 @@ func (s *bookingService) GetBooking(
 			&booking,
 		)
 
-		fmt.Println(
-			"Cache Hit",
+		logger.Log.Info(
+			"booking cache hit",
+
+			zap.Uint(
+				"booking_id",
+				id,
+			),
 		)
 
 		return &booking, nil
@@ -121,8 +150,22 @@ func (s *bookingService) GetBooking(
 
 	booking, err := s.bookingRepo.FindByID(id)
 	if err != nil {
+		logger.Log.Error(
+			"Get booking failed",
+
+			zap.Error(err),
+		)
 		return nil, err
 	}
+
+	logger.Log.Info(
+		"booking cache miss",
+
+		zap.Uint(
+			"booking_id",
+			id,
+		),
+	)
 
 	data, err := json.Marshal(booking)
 	if err == nil {
