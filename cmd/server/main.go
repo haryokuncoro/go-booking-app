@@ -27,6 +27,10 @@ func main() {
 		repository.NewUserRepository(
 			db,
 		)
+	bookingRepo :=
+		repository.NewBookingRepository(
+			db,
+		)
 	authService :=
 		service.NewAuthService(
 			userRepo, cfg,
@@ -36,6 +40,14 @@ func main() {
 			authService,
 		)
 	userHandler := handler.NewUserHandler(userRepo)
+	bookingService :=
+		service.NewBookingService(
+			bookingRepo,
+		)
+	bookingHandler :=
+		handler.NewBookingHandler(
+			bookingService,
+		)
 
 	r.GET(
 		"/health",
@@ -72,6 +84,25 @@ func main() {
 	protected.GET(
 		"/me",
 		userHandler.Me,
+	)
+
+	booking := protected.Group(
+		"/bookings",
+	)
+
+	booking.POST(
+		"",
+		bookingHandler.CreateBooking,
+	)
+
+	booking.GET(
+		"",
+		bookingHandler.ListBookings,
+	)
+
+	booking.GET(
+		"/:id",
+		bookingHandler.GetBooking,
 	)
 
 	fmt.Printf(

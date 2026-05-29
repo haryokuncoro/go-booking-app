@@ -34,6 +34,7 @@ func ConnectDB(
 	
 	err = db.AutoMigrate(
 		&entity.User{},
+		&entity.Booking{},
 	)
 
 	if err != nil {
