@@ -1,7 +1,7 @@
 APP_NAME=booking-app
 IMAGE_NAME=$(APP_NAME)
 IMAGE_TAG=latest
-DB_URL=postgres://root:root@localhost:5432/go_bookingdb?sslmode=disable
+DB_URL=postgres://postgres:postgres@localhost:5433/bookingdb?sslmode=disable
 
 .PHONY: help build run test docker-build docker-run docker-up docker-down migrate-up migrate-down lint
 
@@ -45,3 +45,7 @@ migrate-up:
 migrate-down:
 	migrate -path migrations \
 	-database "$(DB_URL)" down 1
+
+migrate-reset:
+	migrate -path migrations \
+    -database "$(DB_URL)" down -all
