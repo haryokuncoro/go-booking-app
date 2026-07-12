@@ -1,7 +1,9 @@
 package dto
 
+import "github.com/google/uuid"
+
 type BookingResponse struct {
-	ID uint `json:"id"`
+	ID uuid.UUID `json:"id"`
 
 	RoomName string `json:"room_name"`
 

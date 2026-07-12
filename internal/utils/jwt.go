@@ -4,15 +4,16 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type JWTClaims struct {
-	UserID uint `json:"user_id"`
+	UserID uuid.UUID `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
 func GenerateToken(
-	userID uint,
+	userID uuid.UUID,
 	secret string,
 	expireHour int,
 ) (string, error) {

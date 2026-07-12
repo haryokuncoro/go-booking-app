@@ -6,8 +6,8 @@ import (
 	"booking-app/internal/service"
 	customValidator "booking-app/internal/validator"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"net/http"
-	"strconv"
 )
 
 type BookingHandler struct {
@@ -76,7 +76,7 @@ func (h *BookingHandler) CreateBooking(
 	userID :=
 		c.MustGet(
 			"userID",
-		).(uint)
+		).(uuid.UUID)
 
 	err =
 		h.bookingService.
@@ -114,7 +114,7 @@ func (h *BookingHandler) ListBookings(
 	userID :=
 		c.MustGet(
 			"userID",
-		).(uint)
+		).(uuid.UUID)
 
 	bookings, err :=
 		h.bookingService.
@@ -147,7 +147,7 @@ func (h *BookingHandler) ListBookings(
 // @Tags Booking
 // @Produce json
 // @Security BearerAuth
-// @Param id path int true "Booking ID"
+// @Param id path string true "Booking ID"
 // @Success 200 {object} map[string]interface{}
 // @Failure 404 {object} map[string]interface{}
 // @Router /bookings/{id} [get]
@@ -155,18 +155,25 @@ func (h *BookingHandler) GetBooking(
 	c *gin.Context,
 ) {
 
-	id64, _ :=
-		strconv.ParseUint(
-			c.Param("id"),
-			10,
-			64,
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+
+		c.JSON(
+			http.StatusBadRequest,
+			gin.H{
+				"error": "invalid booking id",
+			},
 		)
+
+		return
+	}
+
 	ctx := c.Request.Context()
 	booking, err :=
 		h.bookingService.
 			GetBooking(
 				ctx,
-				uint(id64),
+				id,
 			)
 
 	if err != nil {

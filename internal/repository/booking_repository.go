@@ -3,6 +3,7 @@ package repository
 import (
 	"booking-app/internal/entity"
 	"context"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"time"
 )
@@ -15,12 +16,12 @@ type BookingRepository interface {
 
 	FindByID(
 		ctx context.Context,
-		id uint,
+		id uuid.UUID,
 	) (*entity.Booking, error)
 
 	FindByUserID(
 		ctx context.Context,
-		userID uint,
+		userID uuid.UUID,
 	) ([]entity.Booking, error)
 	FindByRoomAndDate(
 		ctx context.Context,
@@ -55,14 +56,14 @@ func (r *bookingRepository) Create(
 
 func (r *bookingRepository) FindByID(
 	ctx context.Context,
-	id uint,
+	id uuid.UUID,
 ) (*entity.Booking, error) {
 
 	var booking entity.Booking
 
 	err := r.db.
 		WithContext(ctx).
-		First(&booking, id).
+		First(&booking, "id = ?", id).
 		Error
 
 	if err != nil {
@@ -74,7 +75,7 @@ func (r *bookingRepository) FindByID(
 
 func (r *bookingRepository) FindByUserID(
 	ctx context.Context,
-	userID uint,
+	userID uuid.UUID,
 ) ([]entity.Booking, error) {
 
 	var bookings []entity.Booking

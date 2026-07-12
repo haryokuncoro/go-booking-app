@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -26,19 +27,17 @@ func TestMain(m *testing.M) {
 type mockBookingRepo struct {
 	mu       sync.Mutex
 	bookings []*entity.Booking
-	nextID   uint
 }
 
 func (m *mockBookingRepo) Create(ctx context.Context, b *entity.Booking) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.nextID++
-	b.ID = m.nextID
+	b.ID = uuid.New()
 	m.bookings = append(m.bookings, b)
 	return nil
 }
 
-func (m *mockBookingRepo) FindByID(ctx context.Context, id uint) (*entity.Booking, error) {
+func (m *mockBookingRepo) FindByID(ctx context.Context, id uuid.UUID) (*entity.Booking, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, b := range m.bookings {
@@ -49,7 +48,7 @@ func (m *mockBookingRepo) FindByID(ctx context.Context, id uint) (*entity.Bookin
 	return nil, errors.New("not found")
 }
 
-func (m *mockBookingRepo) FindByUserID(ctx context.Context, userID uint) ([]entity.Booking, error) {
+func (m *mockBookingRepo) FindByUserID(ctx context.Context, userID uuid.UUID) ([]entity.Booking, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	var result []entity.Booking
@@ -82,7 +81,7 @@ func (m *mockUserRepo) FindByEmail(ctx context.Context, email string) (*entity.U
 	return nil, errors.New("not found")
 }
 
-func (m *mockUserRepo) FindByID(ctx context.Context, id uint) (*entity.User, error) {
+func (m *mockUserRepo) FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 	// return error so worker.EmailQueue send is skipped
 	return nil, errors.New("not found")
 }
@@ -104,7 +103,7 @@ func TestCreateBooking_Success(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	err := svc.CreateBooking(ctx, 1, dto.CreateBookingRequest{
+	err := svc.CreateBooking(ctx, uuid.New(), dto.CreateBookingRequest{
 		RoomID: 1,
 		Date:   "2026-06-01",
 	})
@@ -118,7 +117,7 @@ func TestCreateBooking_InvalidDate(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	err := svc.CreateBooking(ctx, 1, dto.CreateBookingRequest{
+	err := svc.CreateBooking(ctx, uuid.New(), dto.CreateBookingRequest{
 		RoomID: 1,
 		Date:   "not-a-date",
 	})
@@ -133,11 +132,11 @@ func TestCreateBooking_RoomAlreadyBooked(t *testing.T) {
 	ctx := context.Background()
 	req := dto.CreateBookingRequest{RoomID: 1, Date: "2026-06-01"}
 
-	if err := svc.CreateBooking(ctx, 1, req); err != nil {
+	if err := svc.CreateBooking(ctx, uuid.New(), req); err != nil {
 		t.Fatalf("first booking should succeed, got %v", err)
 	}
 
-	err := svc.CreateBooking(ctx, 2, req)
+	err := svc.CreateBooking(ctx, uuid.New(), req)
 	if !errors.Is(err, ErrRoomAlreadyBooked) {
 		t.Errorf("expected ErrRoomAlreadyBooked, got %v", err)
 	}
@@ -147,6 +146,7 @@ func TestCreateBooking_ConcurrentSameRoomAndDate(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 	req := dto.CreateBookingRequest{RoomID: 1, Date: "2026-06-01"}
+	userID := uuid.New()
 
 	var successCount atomic.Int32
 	var wg sync.WaitGroup
@@ -155,7 +155,7 @@ func TestCreateBooking_ConcurrentSameRoomAndDate(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			err := svc.CreateBooking(ctx, 1, req)
+			err := svc.CreateBooking(ctx, userID, req)
 			if err == nil {
 				successCount.Add(1)
 			}
@@ -172,7 +172,7 @@ func TestGetBooking_NotFound(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	_, err := svc.GetBooking(ctx, 999)
+	_, err := svc.GetBooking(ctx, uuid.New())
 	if err == nil {
 		t.Error("expected error for missing booking, got nil")
 	}
@@ -182,7 +182,7 @@ func TestGetUserBookings_Empty(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
 
-	bookings, err := svc.GetUserBookings(ctx, 99)
+	bookings, err := svc.GetUserBookings(ctx, uuid.New())
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
@@ -194,12 +194,14 @@ func TestGetUserBookings_Empty(t *testing.T) {
 func TestGetUserBookings_ReturnsOwned(t *testing.T) {
 	svc := newTestService()
 	ctx := context.Background()
+	user1 := uuid.New()
+	user2 := uuid.New()
 
-	_ = svc.CreateBooking(ctx, 1, dto.CreateBookingRequest{RoomID: 1, Date: "2026-06-01"})
-	_ = svc.CreateBooking(ctx, 1, dto.CreateBookingRequest{RoomID: 2, Date: "2026-06-02"})
-	_ = svc.CreateBooking(ctx, 2, dto.CreateBookingRequest{RoomID: 3, Date: "2026-06-03"})
+	_ = svc.CreateBooking(ctx, user1, dto.CreateBookingRequest{RoomID: 1, Date: "2026-06-01"})
+	_ = svc.CreateBooking(ctx, user1, dto.CreateBookingRequest{RoomID: 2, Date: "2026-06-02"})
+	_ = svc.CreateBooking(ctx, user2, dto.CreateBookingRequest{RoomID: 3, Date: "2026-06-03"})
 
-	bookings, err := svc.GetUserBookings(ctx, 1)
+	bookings, err := svc.GetUserBookings(ctx, user1)
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}

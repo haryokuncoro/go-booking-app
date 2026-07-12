@@ -1,8 +1,8 @@
 CREATE TABLE bookings (
 
-    id BIGSERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
-    user_id BIGINT NOT NULL,
+    user_id UUID NOT NULL,
 
     room_id BIGINT NOT NULL,
 

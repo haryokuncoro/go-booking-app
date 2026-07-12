@@ -10,6 +10,7 @@ import (
 	"booking-app/internal/entity"
 	"booking-app/internal/utils"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,7 +19,7 @@ import (
 type stubUserRepo struct {
 	createFn      func(ctx context.Context, user *entity.User) error
 	findByEmailFn func(ctx context.Context, email string) (*entity.User, error)
-	findByIDFn    func(ctx context.Context, id uint) (*entity.User, error)
+	findByIDFn    func(ctx context.Context, id uuid.UUID) (*entity.User, error)
 }
 
 func (s *stubUserRepo) Create(ctx context.Context, user *entity.User) error {
@@ -35,7 +36,7 @@ func (s *stubUserRepo) FindByEmail(ctx context.Context, email string) (*entity.U
 	return nil, errors.New("not found")
 }
 
-func (s *stubUserRepo) FindByID(ctx context.Context, id uint) (*entity.User, error) {
+func (s *stubUserRepo) FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 	if s.findByIDFn != nil {
 		return s.findByIDFn(ctx, id)
 	}
@@ -91,7 +92,7 @@ func TestRegister_Success(t *testing.T) {
 func TestRegister_EmailAlreadyExists(t *testing.T) {
 	repo := &stubUserRepo{
 		findByEmailFn: func(ctx context.Context, email string) (*entity.User, error) {
-			return &entity.User{ID: 1, Email: email}, nil
+			return &entity.User{ID: uuid.New(), Email: email}, nil
 		},
 		createFn: func(ctx context.Context, user *entity.User) error {
 			t.Fatal("Create should not be called when email exists")
@@ -138,10 +139,11 @@ func TestRegister_CreateError(t *testing.T) {
 func TestLogin_Success(t *testing.T) {
 	hashed, _ := bcrypt.GenerateFromPassword([]byte("secret123"), bcrypt.DefaultCost)
 	cfg := testConfig()
+	userID := uuid.New()
 	repo := &stubUserRepo{
 		findByEmailFn: func(ctx context.Context, email string) (*entity.User, error) {
 			return &entity.User{
-				ID:       42,
+				ID:       userID,
 				Email:    email,
 				Password: string(hashed),
 			}, nil
@@ -164,8 +166,8 @@ func TestLogin_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("token should be parseable: %v", err)
 	}
-	if claims.UserID != 42 {
-		t.Errorf("expected UserID 42 in token, got %d", claims.UserID)
+	if claims.UserID != userID {
+		t.Errorf("expected UserID %s in token, got %s", userID, claims.UserID)
 	}
 }
 
@@ -194,7 +196,7 @@ func TestLogin_WrongPassword(t *testing.T) {
 	repo := &stubUserRepo{
 		findByEmailFn: func(ctx context.Context, email string) (*entity.User, error) {
 			return &entity.User{
-				ID:       7,
+				ID:       uuid.New(),
 				Email:    email,
 				Password: string(hashed),
 			}, nil

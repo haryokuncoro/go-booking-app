@@ -6,13 +6,11 @@ import (
 	"booking-app/internal/entity"
 	"booking-app/internal/repository"
 	"context"
+	"github.com/google/uuid"
 )
 
 type UserService interface{
-	FindByID(
-	ctx context.Context,
-	id uint,
-) (*entity.User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error)
 }
 
 type userService struct{
@@ -20,24 +18,15 @@ type userService struct{
 	cfg 		*config.Config
 }
 
-func NewUserService(
-	userRepo repository.UserRepository, cfg *config.Config,
-) UserService{
+func NewUserService(userRepo repository.UserRepository, cfg *config.Config) UserService{
 	return &userService{
 		userRepo: userRepo,
 		cfg : cfg,
 	}
 }
 
-func(s *userService) FindByID(
-	ctx context.Context,
-	id uint,
-) (*entity.User, error){
-	existingUser, err :=
-		s.userRepo.FindByID(
-			ctx,
-			id,
-		)
+func(s *userService) FindByID(ctx context.Context, id uuid.UUID) (*entity.User, error){
+	existingUser, err := s.userRepo.FindByID(ctx, id)
 	if err != nil{
 		return nil, err
 	}

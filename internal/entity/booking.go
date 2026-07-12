@@ -1,11 +1,15 @@
 package entity
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type Booking struct {
-	ID uint `gorm:"primaryKey"`
+	ID uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
 
-	UserID uint
+	UserID uuid.UUID `gorm:"type:uuid"`
 
 	RoomID uint `gorm:"uniqueIndex:idx_room_date"`
 

@@ -6,21 +6,24 @@ import (
 	"testing"
 
 	"booking-app/internal/entity"
+
+	"github.com/google/uuid"
 )
 
 func TestFindByID_Success(t *testing.T) {
-	want := &entity.User{ID: 5, Name: "Frank", Email: "frank@example.com"}
+	wantID := uuid.New()
+	want := &entity.User{ID: wantID, Name: "Frank", Email: "frank@example.com"}
 	repo := &stubUserRepo{
-		findByIDFn: func(ctx context.Context, id uint) (*entity.User, error) {
-			if id != 5 {
-				t.Errorf("expected id 5, got %d", id)
+		findByIDFn: func(ctx context.Context, id uuid.UUID) (*entity.User, error) {
+			if id != wantID {
+				t.Errorf("expected id %s, got %s", wantID, id)
 			}
 			return want, nil
 		},
 	}
 	svc := NewUserService(repo, testConfig())
 
-	got, err := svc.FindByID(context.Background(), 5)
+	got, err := svc.FindByID(context.Background(), wantID)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -32,13 +35,13 @@ func TestFindByID_Success(t *testing.T) {
 func TestFindByID_RepoError(t *testing.T) {
 	repoErr := errors.New("db down")
 	repo := &stubUserRepo{
-		findByIDFn: func(ctx context.Context, id uint) (*entity.User, error) {
+		findByIDFn: func(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 			return nil, repoErr
 		},
 	}
 	svc := NewUserService(repo, testConfig())
 
-	got, err := svc.FindByID(context.Background(), 5)
+	got, err := svc.FindByID(context.Background(), uuid.New())
 	if !errors.Is(err, repoErr) {
 		t.Errorf("expected repo error, got %v", err)
 	}
@@ -49,13 +52,13 @@ func TestFindByID_RepoError(t *testing.T) {
 
 func TestFindByID_NotFound(t *testing.T) {
 	repo := &stubUserRepo{
-		findByIDFn: func(ctx context.Context, id uint) (*entity.User, error) {
+		findByIDFn: func(ctx context.Context, id uuid.UUID) (*entity.User, error) {
 			return nil, nil
 		},
 	}
 	svc := NewUserService(repo, testConfig())
 
-	got, err := svc.FindByID(context.Background(), 99)
+	got, err := svc.FindByID(context.Background(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error for missing user, got nil")
 	}

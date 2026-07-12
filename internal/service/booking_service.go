@@ -10,6 +10,7 @@ import (
 	"booking-app/internal/worker"
 	"context"
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"time"
@@ -19,21 +20,9 @@ import (
 var ErrRoomAlreadyBooked = errors.New("room already booked for the requested date")
 
 type BookingService interface {
-	CreateBooking(
-		ctx context.Context,
-		userID uint,
-		req dto.CreateBookingRequest,
-	) error
-
-	GetBooking(
-		ctx context.Context,
-		id uint,
-	) (*entity.Booking, error)
-
-	GetUserBookings(
-		ctx context.Context,
-		userID uint,
-	) ([]entity.Booking, error)
+	CreateBooking(ctx context.Context, userID uuid.UUID, req dto.CreateBookingRequest) error
+	GetBooking(ctx context.Context, id uuid.UUID) (*entity.Booking, error)
+	GetUserBookings(ctx context.Context, userID uuid.UUID) ([]entity.Booking, error)
 }
 
 type bookingService struct {
@@ -42,11 +31,7 @@ type bookingService struct {
 	redis       *redis.Client
 }
 
-func NewBookingService(
-	bookingRepo repository.BookingRepository,
-	userRepo repository.UserRepository,
-	redis *redis.Client,
-) BookingService {
+func NewBookingService(bookingRepo repository.BookingRepository, userRepo repository.UserRepository, redis *redis.Client) BookingService {
 
 	return &bookingService{
 		bookingRepo: bookingRepo,
@@ -55,17 +40,9 @@ func NewBookingService(
 	}
 }
 
-func (s *bookingService) CreateBooking(
-	ctx context.Context,
-	userID uint,
-	req dto.CreateBookingRequest,
-) error {
+func (s *bookingService) CreateBooking(ctx context.Context, userID uuid.UUID, req dto.CreateBookingRequest) error {
 
-	date, err :=
-		time.Parse(
-			"2006-01-02",
-			req.Date,
-		)
+	date, err := time.Parse("2006-01-02", req.Date)
 
 	if err != nil {
 		logger.Log.Error(
@@ -76,22 +53,13 @@ func (s *bookingService) CreateBooking(
 		return err
 	}
 
-	roomLock :=
-		lock.GetRoomLock(
-			req.RoomID,
-		)
+	roomLock := lock.GetRoomLock(req.RoomID)
 
 	roomLock.Lock()
 
 	defer roomLock.Unlock()
 
-	existing, _ :=
-		s.bookingRepo.
-			FindByRoomAndDate(
-				ctx,
-				req.RoomID,
-				date,
-			)
+	existing, _ := s.bookingRepo.FindByRoomAndDate(ctx, req.RoomID, date)
 
 	if existing != nil {
 		logger.Log.Error(
@@ -119,11 +87,7 @@ func (s *bookingService) CreateBooking(
 
 	s.redis.Del(ctx, cache.BookingKey(booking.ID))
 
-	user, err :=
-		s.userRepo.FindByID(
-			ctx,
-			userID,
-		)
+	user, err := s.userRepo.FindByID(ctx, userID)
 
 	if err == nil {
 
@@ -134,24 +98,17 @@ func (s *bookingService) CreateBooking(
 	}
 	logger.Log.Info(
 		"booking created",
-		zap.Uint("user_id", userID,),
+		zap.String("user_id", userID.String()),
 		zap.Uint("room_id", booking.RoomID,
 		),
 	)
 	return nil
 }
 
-func (s *bookingService) GetBooking(
-	ctx context.Context,
-	id uint,
-) (*entity.Booking, error) {
+func (s *bookingService) GetBooking(ctx context.Context, id uuid.UUID) (*entity.Booking, error) {
 	key := cache.BookingKey(id)
 
-	cached, err :=
-		s.redis.Get(
-			ctx,
-			key,
-		).Result()
+	cached, err := s.redis.Get(ctx, key).Result()
 
 	if err == nil {
 
@@ -159,13 +116,13 @@ func (s *bookingService) GetBooking(
 		if unmarshalErr := json.Unmarshal([]byte(cached), &booking); unmarshalErr != nil {
 			logger.Log.Error(
 				"booking cache unmarshal failed",
-				zap.Uint("booking_id", id),
+				zap.String("booking_id", id.String()),
 				zap.Error(unmarshalErr),
 			)
 		} else {
 			logger.Log.Info(
 				"booking cache hit",
-				zap.Uint("booking_id", id),
+				zap.String("booking_id", id.String()),
 			)
 			return &booking, nil
 		}
@@ -182,7 +139,7 @@ func (s *bookingService) GetBooking(
 
 	logger.Log.Info(
 		"booking cache miss",
-		zap.Uint("booking_id",id),
+		zap.String("booking_id", id.String()),
 	)
 
 	data, err := json.Marshal(booking)
@@ -193,14 +150,7 @@ func (s *bookingService) GetBooking(
 	return booking, nil
 }
 
-func (s *bookingService) GetUserBookings(
-	ctx context.Context,
-	userID uint,
-) ([]entity.Booking, error) {
+func (s *bookingService) GetUserBookings(ctx context.Context, userID uuid.UUID) ([]entity.Booking, error) {
 
-	return s.bookingRepo.
-		FindByUserID(
-			ctx,
-			userID,
-		)
+	return s.bookingRepo.FindByUserID(ctx, userID)
 }

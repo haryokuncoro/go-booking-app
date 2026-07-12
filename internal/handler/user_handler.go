@@ -5,6 +5,7 @@ import (
 	"booking-app/internal/repository"
 	"net/http"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -47,7 +48,7 @@ func (h *UserHandler) Me(
 	userID :=
 		c.MustGet(
 			"userID",
-		).(uint)
+		).(uuid.UUID)
 
 	user, err :=
 		h.userRepo.FindByID(
