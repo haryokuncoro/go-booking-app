@@ -1,0 +1,29 @@
+# Binaries
+/bin/
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Test binaries
+*.test
+
+# Build output
+/tmp/
+/coverage.out
+
+# Environment files
+.env
+.env.*
+
+# Docker local state
+*.log
+
+# IDE/editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
