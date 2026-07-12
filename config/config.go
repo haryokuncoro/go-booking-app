@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"os"
 
 	"github.com/spf13/viper"
 )
@@ -28,9 +29,14 @@ func LoadConfig() *Config {
 
 	viper.SetConfigFile(".env")
 
-	err := viper.ReadInConfig()
+	// OS environment variables take precedence over values in the .env file.
+	// This lets docker-compose `environment:` overrides (e.g. DB_HOST=postgres)
+	// win over the localhost defaults baked into .env.
+	viper.AutomaticEnv()
 
-	if err != nil {
+	// A missing .env file is not fatal: in containerized environments the
+	// configuration comes entirely from environment variables.
+	if err := viper.ReadInConfig(); err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
 	}
 

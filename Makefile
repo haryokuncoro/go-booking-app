@@ -1,12 +1,7 @@
 APP_NAME=booking-app
 IMAGE_NAME=$(APP_NAME)
 IMAGE_TAG=latest
-DB_HOST ?= localhost
-DB_PORT ?= 5433
-DB_USER ?= postgres
-DB_PASSWORD ?= postgres
-DB_NAME ?= bookingdb
-DB_URL=postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable
+DB_URL=postgres://root:root@localhost:5432/go_bookingdb?sslmode=disable
 
 .PHONY: help build run test docker-build docker-run docker-up docker-down migrate-up migrate-down lint
 
@@ -35,13 +30,10 @@ lint:
 	go vet ./...
 
 docker-build:
-	docker build -t $(IMAGE_NAME):$(IMAGE_TAG) .
+	docker build -t $(APP_NAME):latest .
 
 docker-run:
-	docker run --rm -p 8080:8080 --env-file .env --name $(APP_NAME) $(IMAGE_NAME):$(IMAGE_TAG)
-
-docker-up:
-	docker compose up -d --build
+	docker compose up --build
 
 docker-down:
 	docker compose down

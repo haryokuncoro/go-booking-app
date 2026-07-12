@@ -26,7 +26,7 @@ func Setup(
 		gin.Recovery(),
 	)
 
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	r.GET("/swagger-ui/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	r.GET("/health", healthHandler.Health)
 	r.POST("/seed-user", userHandler.SeedUser)
 
